@@ -6,24 +6,44 @@ import (
 )
 
 type Store struct {
-	data    map[string]string
-	expires map[string]time.Time
+	Data    map[string]string
+	Expires map[string]time.Time
 	mu      sync.RWMutex // Allow multiple read, single write
 }
 
 // NewStore creates a new store
 func NewStore() *Store {
 	return &Store{
-		data:    make(map[string]string),
-		expires: make(map[string]time.Time),
+		Data:    make(map[string]string),
+		Expires: make(map[string]time.Time),
 	}
+}
+
+// Lock locks the store for writing
+func (s *Store) Lock() {
+	s.mu.Lock()
+}
+
+// Unlock unlocks the store
+func (s *Store) Unlock() {
+	s.mu.Unlock()
+}
+
+// RLock locks the store for reading
+func (s *Store) RLock() {
+	s.mu.RLock()
+}
+
+// RUnlock unlocks the store
+func (s *Store) RUnlock() {
+	s.mu.RUnlock()
 }
 
 // Set sets the value for a key
 func (s *Store) Set(key, value string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data[key] = value
+	s.Data[key] = value
 }
 
 // Get gets the value for a key
@@ -33,14 +53,14 @@ func (s *Store) Get(key string) (string, bool) {
 	if s.isExpired(key) {
 		return "", false
 	}
-	value, ok := s.data[key]
+	value, ok := s.Data[key]
 	return value, ok
 }
 
 func (s *Store) Del(key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.data, key)
+	delete(s.Data, key)
 }
 
 // Exists checks if a key exists
@@ -50,7 +70,7 @@ func (s *Store) Exists(key string) bool {
 	if s.isExpired(key) {
 		return false
 	}
-	_, ok := s.data[key]
+	_, ok := s.Data[key]
 	return ok
 }
 
@@ -58,10 +78,10 @@ func (s *Store) Exists(key string) bool {
 func (s *Store) SetNX(key, value string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, exists := s.data[key]; exists {
+	if _, exists := s.Data[key]; exists {
 		return false
 	}
-	s.data[key] = value
+	s.Data[key] = value
 	return true
 }
 
@@ -69,8 +89,8 @@ func (s *Store) SetNX(key, value string) bool {
 func (s *Store) Expire(key string, ttl time.Duration) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, exists := s.data[key]; exists {
-		s.expires[key] = time.Now().Add(ttl)
+	if _, exists := s.Data[key]; exists {
+		s.Expires[key] = time.Now().Add(ttl)
 		return true
 	}
 	return false
@@ -78,10 +98,10 @@ func (s *Store) Expire(key string, ttl time.Duration) bool {
 
 // isExpired checks if a key has expired
 func (s *Store) isExpired(key string) bool {
-	if exp, exists := s.expires[key]; exists {
+	if exp, exists := s.Expires[key]; exists {
 		if time.Now().After(exp) {
-			delete(s.data, key)
-			delete(s.expires, key)
+			delete(s.Data, key)
+			delete(s.Expires, key)
 			return true
 		}
 	}
