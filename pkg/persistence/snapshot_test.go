@@ -9,7 +9,15 @@ import (
 )
 
 func TestSaveLoadSnapshot(t *testing.T) {
-	s := store.NewStore()
+	// Create a temporary AOF file
+	aofFilename := "test_appendonly.aof"
+	aofChan := make(chan string, 100)
+
+	// Start the AOF writer
+	go AOFWriter(aofChan, aofFilename)
+
+	// Initialize a new store with the AOF file
+	s := store.NewStore(aofChan)
 
 	s.Set("Key1", "Value1")
 	s.Set("Key2", "Value2")
@@ -20,7 +28,7 @@ func TestSaveLoadSnapshot(t *testing.T) {
 		t.Fatalf("Failed to save snapshot: %v", err)
 	}
 
-	newStore := store.NewStore()
+	newStore := store.NewStore(aofChan)
 	err = LoadSnapshot(newStore, "test_snapshot.gob")
 	if err != nil {
 		t.Fatalf("Failed to load snapshot: %v", err)
@@ -48,5 +56,8 @@ func TestSaveLoadSnapshot(t *testing.T) {
 
 	// Clean up the snapshot file
 	err = os.Remove("test_snapshot.gob")
+
+	// Clean up the AOF file
+	os.Remove(aofFilename)
 
 }

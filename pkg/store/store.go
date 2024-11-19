@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -8,14 +9,16 @@ import (
 type Store struct {
 	Data    map[string]string
 	Expires map[string]time.Time
-	mu      sync.RWMutex // Allow multiple read, single write
+	mu      sync.RWMutex
+	aofChan chan string
 }
 
 // NewStore creates a new store
-func NewStore() *Store {
+func NewStore(aofChan chan string) *Store {
 	return &Store{
 		Data:    make(map[string]string),
 		Expires: make(map[string]time.Time),
+		aofChan: aofChan,
 	}
 }
 
@@ -44,6 +47,7 @@ func (s *Store) Set(key, value string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Data[key] = value
+	s.aofChan <- fmt.Sprintf("SET %s %s", key, value)
 }
 
 // Get gets the value for a key
@@ -61,6 +65,8 @@ func (s *Store) Del(key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.Data, key)
+	delete(s.Expires, key)
+	s.aofChan <- fmt.Sprintf("DEL %s", key)
 }
 
 // Exists checks if a key exists
@@ -82,6 +88,7 @@ func (s *Store) SetNX(key, value string) bool {
 		return false
 	}
 	s.Data[key] = value
+	s.aofChan <- fmt.Sprintf("SET %s %s", key, value)
 	return true
 }
 
@@ -91,6 +98,7 @@ func (s *Store) Expire(key string, ttl time.Duration) bool {
 	defer s.mu.Unlock()
 	if _, exists := s.Data[key]; exists {
 		s.Expires[key] = time.Now().Add(ttl)
+		s.aofChan <- fmt.Sprintf("EXPIRE %s %d", key, int(ttl.Seconds()))
 		return true
 	}
 	return false
@@ -102,6 +110,7 @@ func (s *Store) isExpired(key string) bool {
 		if time.Now().After(exp) {
 			delete(s.Data, key)
 			delete(s.Expires, key)
+			s.aofChan <- fmt.Sprintf("DEL %s", key)
 			return true
 		}
 	}

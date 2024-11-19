@@ -12,8 +12,11 @@ import (
 func main() {
 	fmt.Println("Starting Redis Clone Server...")
 
+	// Set up AOF
+	aofChan := make(chan string)
+
 	// Start the server
-	s := store.NewStore()
+	s := store.NewStore(aofChan)
 	srv := server.NewServer(s)
 
 	//Load snapshot on startup
@@ -32,6 +35,9 @@ func main() {
 			}
 		}
 	}()
+
+	// Start the AOF writer
+	go persistence.AOFWriter(aofChan, "appendonly.aof")
 
 	// Start the server
 	if err := srv.Start(":6379"); err != nil {
