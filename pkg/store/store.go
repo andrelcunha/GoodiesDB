@@ -1,16 +1,21 @@
 package store
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type Store struct {
-	data map[string]string
-	mu   sync.RWMutex // Allow multiple read, single write
+	data    map[string]string
+	expires map[string]time.Time
+	mu      sync.RWMutex // Allow multiple read, single write
 }
 
 // NewStore creates a new store
 func NewStore() *Store {
 	return &Store{
-		data: make(map[string]string),
+		data:    make(map[string]string),
+		expires: make(map[string]time.Time),
 	}
 }
 
@@ -25,11 +30,14 @@ func (s *Store) Set(key, value string) {
 func (s *Store) Get(key string) (string, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if s.isExpired(key) {
+		return "", false
+	}
 	value, ok := s.data[key]
 	return value, ok
 }
 
-func (s *Store) Delete(key string) {
+func (s *Store) Del(key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.data, key)
@@ -39,6 +47,9 @@ func (s *Store) Delete(key string) {
 func (s *Store) Exists(key string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if s.isExpired(key) {
+		return false
+	}
 	_, ok := s.data[key]
 	return ok
 }
@@ -52,4 +63,27 @@ func (s *Store) SetNX(key, value string) bool {
 	}
 	s.data[key] = value
 	return true
+}
+
+// Expire sets the expiration time for a key
+func (s *Store) Expire(key string, ttl time.Duration) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.data[key]; exists {
+		s.expires[key] = time.Now().Add(ttl)
+		return true
+	}
+	return false
+}
+
+// isExpired checks if a key has expired
+func (s *Store) isExpired(key string) bool {
+	if exp, exists := s.expires[key]; exists {
+		if time.Now().After(exp) {
+			delete(s.data, key)
+			delete(s.expires, key)
+			return true
+		}
+	}
+	return false
 }

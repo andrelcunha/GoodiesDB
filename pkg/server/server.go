@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
+	"time"
 
 	"com.github.andrelcunha.go-redis-clone/pkg/store"
 )
@@ -61,6 +63,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 	}
 
 	switch parts[0] {
+
 	case "SET":
 		if len(parts) != 3 {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'SET' command")
@@ -68,6 +71,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		}
 		s.store.Set(parts[1], parts[2])
 		fmt.Fprintln(conn, "OK")
+
 	case "GET":
 		if len(parts) != 2 {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'GET' command")
@@ -79,13 +83,15 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		} else {
 			fmt.Fprintln(conn, value)
 		}
+
 	case "DEL":
 		if len(parts) != 2 {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'DEL' command")
 			return
 		}
-		s.store.Delete(parts[1])
+		s.store.Del(parts[1])
 		fmt.Fprintln(conn, "OK")
+
 	case "EXISTS":
 		if len(parts) != 2 {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'EXISTS' command")
@@ -97,6 +103,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		} else {
 			fmt.Fprintln(conn, 0)
 		}
+
 	case "SETNX":
 		if len(parts) != 3 {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'SETNX' command")
@@ -107,6 +114,25 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		} else {
 			fmt.Fprintln(conn, 0)
 		}
+
+	case "EXPIRE":
+		if len(parts) != 3 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'EXPIRE' command")
+			return
+		}
+		key := parts[1]
+		ttl, err := strconv.Atoi(parts[2])
+		if err != nil {
+			fmt.Fprintln(conn, "ERR invalid TTL")
+			return
+		}
+		duration := time.Duration(ttl) * time.Second
+		if s.store.Expire(key, duration) {
+			fmt.Fprintln(conn, 1)
+		} else {
+			fmt.Fprintln(conn, 0)
+		}
+
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
 	}
