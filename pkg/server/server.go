@@ -86,6 +86,27 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		}
 		s.store.Delete(parts[1])
 		fmt.Fprintln(conn, "OK")
+	case "EXISTS":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'EXISTS' command")
+			return
+		}
+		exists := s.store.Exists(parts[1])
+		if exists {
+			fmt.Fprintln(conn, 1)
+		} else {
+			fmt.Fprintln(conn, 0)
+		}
+	case "SETNX":
+		if len(parts) != 3 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'SETNX' command")
+			return
+		}
+		if s.store.SetNX(parts[1], parts[2]) {
+			fmt.Fprintln(conn, 1)
+		} else {
+			fmt.Fprintln(conn, 0)
+		}
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
 	}

@@ -34,3 +34,22 @@ func (s *Store) Delete(key string) {
 	defer s.mu.Unlock()
 	delete(s.data, key)
 }
+
+// Exists checks if a key exists
+func (s *Store) Exists(key string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, ok := s.data[key]
+	return ok
+}
+
+// SetNx sets the value for a key if the key does not exist
+func (s *Store) SetNX(key, value string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.data[key]; exists {
+		return false
+	}
+	s.data[key] = value
+	return true
+}
