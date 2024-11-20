@@ -36,3 +36,7 @@ go.work.sum
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+
+*.aof
+*.gob
