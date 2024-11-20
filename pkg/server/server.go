@@ -185,9 +185,21 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		}
 		fmt.Fprintln(conn, newValue)
 
+	case "TTL":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'TTL' command")
+			return
+		}
+		ttl, err := s.store.TTL(parts[1])
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, ttl)
+
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
-		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR")
+		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR, TTL")
 	}
 }
 

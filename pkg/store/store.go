@@ -159,3 +159,20 @@ func (s *Store) Decr(key string) (int, error) {
 	s.aofChan <- fmt.Sprintf("DECR %s", key)
 	return intValue, nil
 }
+
+// TTL Retrieve the remaining time to live for a key
+func (s *Store) TTL(key string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, ok := s.Data[key]; !ok {
+		return -2, nil
+	}
+
+	if _, ok := s.Expires[key]; !ok {
+		return -1, nil
+	}
+
+	ttl := s.Expires[key].Sub(time.Now())
+	return int(ttl.Seconds()), nil
+}

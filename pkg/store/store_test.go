@@ -114,3 +114,53 @@ func TesDecr(t *testing.T) {
 		t.Fatalf("expected -2, got %d", newValue)
 	}
 }
+
+// test Ttl
+func TestTtl(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	s.Set("Key1", "Value1")
+	if !s.Expire("Key1", 4*time.Second) {
+		t.Fatalf("Expected Expire to succeed for Key1")
+	}
+	time.Sleep(1 * time.Second)
+
+	// Test that TTL returns the correct remaining time
+	ttl, err := s.TTL("Key1")
+	if err != nil {
+		t.Fatalf("Expected TTL to succeed for Key1")
+	}
+	if ttl != 2 {
+		t.Fatalf("Expected TTL to be 2 seconds, got %v", ttl)
+	}
+
+	time.Sleep(3 * time.Second)
+
+	// Test that TTL returns -2 for expired key
+	ttl, err = s.TTL("Key1")
+	if err != nil {
+		t.Fatalf("Expected TTL to succeed for Key1")
+	}
+	if ttl != 0 {
+		t.Fatalf("Expected TTL to be -2, got %v", ttl)
+	}
+
+	s.Set("Key2", "Value2")
+	ttl, err = s.TTL("Key2")
+	if err != nil {
+		t.Fatalf("Expected TTL to succeed for Key2")
+	}
+	if ttl != -1 {
+		t.Fatalf("Expected TTL to be -1, got %v", ttl)
+	}
+
+	s.Del("Key2")
+	ttl, err = s.TTL("Key2")
+	if err != nil {
+		t.Fatalf("Expected TTL to succeed for Key2")
+	}
+	if ttl != -2 {
+		t.Fatalf("Expected TTL to be -2, got %v", ttl)
+	}
+}
