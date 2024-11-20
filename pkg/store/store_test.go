@@ -6,8 +6,9 @@ import (
 )
 
 func TestStore(t *testing.T) {
-	s := NewStore()
+	aofChan := make(chan string, 100)
 
+	s := NewStore(aofChan)
 	s.Set("Key1", "Value1")
 	value, ok := s.Get("Key1")
 	if !ok {
@@ -25,7 +26,9 @@ func TestStore(t *testing.T) {
 }
 
 func TestExists(t *testing.T) {
-	s := NewStore()
+	aofChan := make(chan string, 100)
+
+	s := NewStore(aofChan)
 	s.Set("Key1", "Value1")
 	if !s.Exists("Key1") {
 		t.Fatalf("Expected Key1 to exist")
@@ -36,7 +39,9 @@ func TestExists(t *testing.T) {
 }
 
 func TestSetNX(t *testing.T) {
-	s := NewStore()
+	aofChan := make(chan string, 100)
+
+	s := NewStore(aofChan)
 	if !s.SetNX("Key1", "Value1") {
 		t.Fatalf("Expected SETNX to succeed for Key1")
 	}
@@ -50,7 +55,9 @@ func TestSetNX(t *testing.T) {
 }
 
 func TestExpire(t *testing.T) {
-	s := NewStore()
+	aofChan := make(chan string, 100)
+
+	s := NewStore(aofChan)
 	s.Set("Key1", "Value1")
 	if !s.Expire("Key1", 1*time.Second) {
 		t.Fatalf("Expected Expire to succeed for Key1")
@@ -59,5 +66,51 @@ func TestExpire(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	if s.Exists("Key1") {
 		t.Fatalf("Expected Key1 to be expired")
+	}
+}
+
+func TestIncr(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	newValue, err := s.Incr("counter")
+	if err != nil {
+		t.Fatalf("INCR failed: %v", err)
+	}
+	// test if value is created and set as '0'++
+	if newValue != 1 {
+		t.Fatalf("expected 1, got %d", newValue)
+	}
+
+	// test if value is incremented
+	newValue, err = s.Incr("counter")
+	if err != nil {
+		t.Fatalf("INCR failed: %v", err)
+	}
+	if newValue != 2 {
+		t.Fatalf("expected 2, got %d", newValue)
+	}
+}
+
+func TesDecr(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	newValue, err := s.Decr("counter")
+	if err != nil {
+		t.Fatalf("DECR failed: %v", err)
+	}
+	// test if value is created and set as '0'--
+	if newValue != -1 {
+		t.Fatalf("expected -1, got %d", newValue)
+	}
+
+	// test if value is incremented
+	newValue, err = s.Incr("counter")
+	if err != nil {
+		t.Fatalf("DECR failed: %v", err)
+	}
+	if newValue != -2 {
+		t.Fatalf("expected -2, got %d", newValue)
 	}
 }

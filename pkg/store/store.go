@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -115,4 +116,46 @@ func (s *Store) isExpired(key string) bool {
 		}
 	}
 	return false
+}
+
+// Incr increments the value for a key
+func (s *Store) Incr(key string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	value, ok := s.Data[key]
+	if !ok {
+		value = "0"
+	}
+
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("value is not an integer or out of range")
+	}
+
+	intValue++
+	s.Data[key] = strconv.Itoa(intValue)
+	s.aofChan <- fmt.Sprintf("INCR %s", key)
+	return intValue, nil
+}
+
+// Decr decrements the value for a key
+func (s *Store) Decr(key string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	value, ok := s.Data[key]
+	if !ok {
+		value = "0"
+	}
+
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("value is not an integer or out of range")
+	}
+
+	intValue--
+	s.Data[key] = strconv.Itoa(intValue)
+	s.aofChan <- fmt.Sprintf("DECR %s", key)
+	return intValue, nil
 }

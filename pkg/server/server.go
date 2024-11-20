@@ -133,8 +133,32 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, 0)
 		}
 
+	case "INCR":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'INCR' command")
+			return
+		}
+		newValue, err := s.store.Incr(parts[1])
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, newValue)
+
+	case "DECR":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'DECR' command")
+			return
+		}
+		newValue, err := s.store.Incr(parts[1])
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, newValue)
+
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
-		fmt.Fprintln(conn, "Available commands: SET, GET, DEL, EXISTS, SETNX, EXPIRE")
+		fmt.Fprintln(conn, "Available commands: SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR")
 	}
 }
