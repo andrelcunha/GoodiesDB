@@ -18,6 +18,7 @@ type Server struct {
 	config                   *Config
 	mu                       sync.Mutex
 	authenticatedConnections map[net.Conn]bool
+	connectionDbs            map[net.Conn]int
 }
 
 // NewServer creates a new server
@@ -26,6 +27,7 @@ func NewServer(store *store.Store, config *Config) *Server {
 		store:                    store,
 		config:                   config,
 		authenticatedConnections: make(map[net.Conn]bool),
+		connectionDbs:            make(map[net.Conn]int),
 	}
 }
 
@@ -76,6 +78,8 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		return
 	}
 
+	dbIndex := s.getCurrentDb(conn)
+
 	switch parts[0] {
 
 	case "AUTH":
@@ -97,7 +101,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'SET' command")
 			return
 		}
-		s.store.Set(parts[1], parts[2])
+		s.store.Set(dbIndex, parts[1], parts[2])
 		fmt.Fprintln(conn, "OK")
 
 	case "GET":
@@ -105,7 +109,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'GET' command")
 			return
 		}
-		value, ok := s.store.Get(parts[1])
+		value, ok := s.store.Get(dbIndex, parts[1])
 		if !ok {
 			fmt.Fprintln(conn, "NULL")
 		} else {
@@ -117,7 +121,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'DEL' command")
 			return
 		}
-		s.store.Del(parts[1])
+		s.store.Del(dbIndex, parts[1])
 		fmt.Fprintln(conn, "OK")
 
 	case "EXISTS":
@@ -125,7 +129,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'EXISTS' command")
 			return
 		}
-		exists := s.store.Exists(parts[1])
+		exists := s.store.Exists(dbIndex, parts[1])
 		if exists {
 			fmt.Fprintln(conn, 1)
 		} else {
@@ -137,7 +141,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'SETNX' command")
 			return
 		}
-		if s.store.SetNX(parts[1], parts[2]) {
+		if s.store.SetNX(dbIndex, parts[1], parts[2]) {
 			fmt.Fprintln(conn, 1)
 		} else {
 			fmt.Fprintln(conn, 0)
@@ -155,7 +159,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			return
 		}
 		duration := time.Duration(ttl) * time.Second
-		if s.store.Expire(key, duration) {
+		if s.store.Expire(dbIndex, key, duration) {
 			fmt.Fprintln(conn, 1)
 		} else {
 			fmt.Fprintln(conn, 0)
@@ -166,7 +170,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'INCR' command")
 			return
 		}
-		newValue, err := s.store.Incr(parts[1])
+		newValue, err := s.store.Incr(dbIndex, parts[1])
 		if err != nil {
 			fmt.Fprintln(conn, "ERR ", err.Error())
 			return
@@ -178,7 +182,7 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'DECR' command")
 			return
 		}
-		newValue, err := s.store.Incr(parts[1])
+		newValue, err := s.store.Decr(dbIndex, parts[1])
 		if err != nil {
 			fmt.Fprintln(conn, "ERR ", err.Error())
 			return
@@ -190,12 +194,25 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR wrong number of arguments for 'TTL' command")
 			return
 		}
-		ttl, err := s.store.TTL(parts[1])
+		ttl, err := s.store.TTL(dbIndex, parts[1])
 		if err != nil {
 			fmt.Fprintln(conn, "ERR ", err.Error())
 			return
 		}
 		fmt.Fprintln(conn, ttl)
+
+	case "SELECT":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'SELECT' command")
+			return
+		}
+		dbIndex, err := strconv.Atoi(parts[1])
+		if err != nil {
+			fmt.Fprintln(conn, "ERR invalid DB index")
+			return
+		}
+		s.selectDb(conn, dbIndex)
+		fmt.Fprintln(conn, "OK")
 
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
@@ -207,4 +224,21 @@ func (s *Server) isAuthenticates(conn net.Conn) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.authenticatedConnections[conn]
+}
+
+func (s *Server) getCurrentDb(conn net.Conn) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	db, ok := s.connectionDbs[conn]
+	if !ok {
+		db = 0
+		s.connectionDbs[conn] = db
+	}
+	return db
+}
+
+func (s *Server) selectDb(conn net.Conn, dbIndex int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.connectionDbs[conn] = dbIndex
 }

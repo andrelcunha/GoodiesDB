@@ -19,9 +19,11 @@ func TestAOFRecovery(t *testing.T) {
 	// Initialize the store with AOF logging
 	s := store.NewStore(aofChan)
 
-	s.Set("Key1", "Value1")
-	s.Set("Key2", "Value2")
-	s.Expire("Key1", 3*time.Second)
+	dbIndex := 0
+
+	s.Set(dbIndex, "Key1", "Value1")
+	s.Set(dbIndex, "Key2", "Value2")
+	s.Expire(dbIndex, "Key1", 3*time.Second)
 
 	// Give some time for commands to be written to AOF
 	time.Sleep(1 * time.Second)
@@ -34,13 +36,13 @@ func TestAOFRecovery(t *testing.T) {
 	}
 
 	// Verify Key1 exists before it expires
-	value, ok := newStore.Get("Key1")
+	value, ok := newStore.Get(dbIndex, "Key1")
 	if !ok || value != "Value1" {
 		t.Fatalf("Expected Value1, got %s", value)
 	}
 
 	// Verify Key2 exists before it expires
-	value, ok = newStore.Get("Key2")
+	value, ok = newStore.Get(dbIndex, "Key2")
 	if !ok || value != "Value2" {
 		t.Fatalf("Expected Value2, got %s", value)
 	}
@@ -49,7 +51,7 @@ func TestAOFRecovery(t *testing.T) {
 	time.Sleep(4 * time.Second)
 
 	// Verify Key1 exists after it expires
-	if newStore.Exists("Key1") {
+	if newStore.Exists(dbIndex, "Key1") {
 		t.Fatalf("Expected Key1 to be expired after waiting more than 3 seconds")
 	}
 

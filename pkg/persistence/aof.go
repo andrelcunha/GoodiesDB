@@ -44,30 +44,36 @@ func RebuildStoreFromAOF(s *store.Store, filename string) error {
 			continue
 		}
 
+		dbIndex, err := strconv.Atoi(parts[1])
+		if err != nil {
+			log.Printf("Invalid database index: %s", parts[1])
+			continue
+		}
+
 		switch parts[0] {
 
 		case "SET":
-			if len(parts) == 3 {
-				s.Set(parts[1], parts[2])
+			if len(parts) == 4 {
+				s.Set(dbIndex, parts[2], parts[3])
 			}
 
 		case "DEL":
-			if len(parts) == 2 {
-				s.Del(parts[1])
+			if len(parts) == 3 {
+				s.Del(dbIndex, parts[2])
 			}
 
 		case "SETNX":
-			if len(parts) == 3 {
-				s.SetNX(parts[1], parts[2])
+			if len(parts) == 4 {
+				s.SetNX(dbIndex, parts[2], parts[3])
 			}
 
 		case "EXPIRE":
-			if len(parts) == 3 {
-				key := parts[1]
-				ttl, err := strconv.Atoi(parts[2])
+			if len(parts) == 4 {
+				key := parts[2]
+				ttl, err := strconv.Atoi(parts[3])
 				if err == nil {
 					duration := time.Duration(ttl) * time.Second
-					s.Expire(key, duration)
+					s.Expire(dbIndex, key, duration)
 				}
 			}
 

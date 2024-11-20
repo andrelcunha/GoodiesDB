@@ -12,6 +12,7 @@ func TestSaveLoadSnapshot(t *testing.T) {
 	// Create a temporary AOF file
 	aofFilename := "test_appendonly.aof"
 	aofChan := make(chan string, 100)
+	dbIndex := 0
 
 	// Start the AOF writer
 	go AOFWriter(aofChan, aofFilename)
@@ -19,9 +20,9 @@ func TestSaveLoadSnapshot(t *testing.T) {
 	// Initialize a new store with the AOF file
 	s := store.NewStore(aofChan)
 
-	s.Set("Key1", "Value1")
-	s.Set("Key2", "Value2")
-	s.Expire("Key1", 3*time.Second)
+	s.Set(dbIndex, "Key1", "Value1")
+	s.Set(dbIndex, "Key2", "Value2")
+	s.Expire(dbIndex, "Key1", 3*time.Second)
 
 	err := SaveSnapshot(s, "test_snapshot.gob")
 	if err != nil {
@@ -35,13 +36,13 @@ func TestSaveLoadSnapshot(t *testing.T) {
 	}
 
 	// Verify Key1 exists before it expires
-	value, ok := newStore.Get("Key1")
+	value, ok := newStore.Get(dbIndex, "Key1")
 	if !ok || value != "Value1" {
 		t.Fatalf("Expected Value1, got %s", value)
 	}
 
 	// Verify Key2 exists before it expires
-	value, ok = newStore.Get("Key2")
+	value, ok = newStore.Get(dbIndex, "Key2")
 	if !ok || value != "Value2" {
 		t.Fatalf("Expected Value2, got %s", value)
 	}
@@ -50,7 +51,7 @@ func TestSaveLoadSnapshot(t *testing.T) {
 	time.Sleep(4 * time.Second)
 
 	// Verify Key1 exists after it expires
-	if newStore.Exists("Key1") {
+	if newStore.Exists(dbIndex, "Key1") {
 		t.Fatalf("Expected Key1 to be expered after snapshot load an waiting more than 3 seconds")
 	}
 
