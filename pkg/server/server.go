@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"com.github.andrelcunha.go-redis-clone/pkg/store"
@@ -13,12 +14,19 @@ import (
 
 // Server represents a TCP server
 type Server struct {
-	store *store.Store
+	store                    *store.Store
+	config                   *Config
+	mu                       sync.Mutex
+	authenticatedConnections map[net.Conn]bool
 }
 
 // NewServer creates a new server
-func NewServer(s *store.Store) *Server {
-	return &Server{store: s}
+func NewServer(store *store.Store, config *Config) *Server {
+	return &Server{
+		store:                    store,
+		config:                   config,
+		authenticatedConnections: make(map[net.Conn]bool),
+	}
 }
 
 // Start starts the server
@@ -62,7 +70,27 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		return
 	}
 
+	//check authentication
+	if !s.isAuthenticates(conn) && parts[0] != "AUTH" {
+		fmt.Fprintln(conn, "NOAUTH Authentication required.")
+		return
+	}
+
 	switch parts[0] {
+
+	case "AUTH":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'AUTH' command")
+			return
+		}
+		if parts[1] == s.config.Password {
+			s.mu.Lock()
+			s.authenticatedConnections[conn] = true
+			s.mu.Unlock()
+			fmt.Fprintln(conn, "OK")
+		} else {
+			fmt.Fprintln(conn, "ERR invalid password")
+		}
 
 	case "SET":
 		if len(parts) != 3 {
@@ -159,6 +187,12 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
-		fmt.Fprintln(conn, "Available commands: SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR")
+		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR")
 	}
+}
+
+func (s *Server) isAuthenticates(conn net.Conn) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.authenticatedConnections[conn]
 }

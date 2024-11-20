@@ -15,9 +15,14 @@ func main() {
 	// Set up AOF
 	aofChan := make(chan string)
 
-	// Start the server
+	// Set up the store
 	s := store.NewStore(aofChan)
-	srv := server.NewServer(s)
+
+	// Set up configuration
+	config := server.NewConfig()
+
+	// Start the server
+	srv := server.NewServer(s, config)
 
 	//Load snapshot on startup
 	if err := persistence.LoadSnapshot(s, "snapshot.gob"); err != nil {
