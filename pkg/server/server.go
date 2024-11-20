@@ -135,5 +135,6 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
+		fmt.Fprintln(conn, "Available commands: SET, GET, DEL, EXISTS, SETNX, EXPIRE")
 	}
 }
