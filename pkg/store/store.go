@@ -18,7 +18,7 @@ type Store struct {
 func NewStore(aofChan chan string) *Store {
 	data := make([]map[string]interface{}, 16)
 	expires := make([]map[string]time.Time, 16)
-	for i := 0; i < 16; i++ {
+	for i := range data {
 		data[i] = make(map[string]interface{})
 		expires[i] = make(map[string]time.Time)
 	}
@@ -64,9 +64,8 @@ func (s *Store) Get(dbIndex int, key string) (string, bool) {
 	if s.isExpired(dbIndex, key) {
 		return "", false
 	}
-	value, ok := s.Data[dbIndex][key]
-	strValue, ok := value.(string)
-	return strValue, ok
+	value, ok := s.Data[dbIndex][key].(string)
+	return value, ok
 }
 
 func (s *Store) Del(dbIndex int, key string) {
@@ -130,8 +129,7 @@ func (s *Store) Incr(dbIndex int, key string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rawValue, ok := s.Data[dbIndex][key]
-	value, ok := rawValue.(string)
+	value, ok := s.Data[dbIndex][key].(string)
 	if !ok {
 		value = "0"
 	}
@@ -152,8 +150,7 @@ func (s *Store) Decr(dbIndex int, key string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	rawValue, ok := s.Data[dbIndex][key]
-	value, ok := rawValue.(string)
+	value, ok := s.Data[dbIndex][key].(string)
 	if !ok {
 		value = "0"
 	}
