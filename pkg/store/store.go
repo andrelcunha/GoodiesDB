@@ -212,6 +212,11 @@ func (s *Store) LPop(dbIndex int, key string, pcount *int) (interface{}, error) 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Check if the key has expired
+	if s.isExpired(dbIndex, key) {
+		return nil, nil
+	}
+
 	count := 1
 	//if not nil, get the count from the caller
 	if pcount != nil {
@@ -254,6 +259,11 @@ func (s *Store) LPop(dbIndex int, key string, pcount *int) (interface{}, error) 
 func (s *Store) RPop(dbIndex int, key string, pcount *int) (interface{}, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Check if the key has expired
+	if s.isExpired(dbIndex, key) {
+		return nil, nil
+	}
 
 	count := 1
 	//if not nil, get the count from the caller

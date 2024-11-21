@@ -77,6 +77,32 @@ func RebuildStoreFromAOF(s *store.Store, filename string) error {
 				}
 			}
 
+		case "LPUSH":
+			if len(parts) >= 4 {
+				s.LPush(dbIndex, parts[2], parts[3:]...)
+			}
+
+		case "RPUSH":
+			if len(parts) >= 4 {
+				s.RPush(dbIndex, parts[2], parts[3:]...)
+			}
+
+		case "LPOP":
+			if len(parts) == 4 {
+				count, err := strconv.Atoi(parts[3])
+				if err == nil {
+					s.LPop(dbIndex, parts[2], &count)
+				}
+			}
+
+		case "RPOP":
+			if len(parts) == 4 {
+				count, err := strconv.Atoi(parts[3])
+				if err == nil {
+					s.RPop(dbIndex, parts[2], &count)
+				}
+			}
+
 		default:
 			log.Printf("Unknown command: %s", cmd)
 		}
