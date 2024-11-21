@@ -164,3 +164,159 @@ func TestTtl(t *testing.T) {
 		t.Fatalf("Expected TTL to be -2, got %v", ttl)
 	}
 }
+
+// test LPush
+func TestLPush(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	//test if the response is correct
+	listLen := s.LPush(0, "list", "value1", "value2")
+	if listLen != 2 {
+		t.Fatalf("Expected response to be 2, got %d", listLen)
+	}
+
+	//test if the list length is correct
+	s.LPush(0, "list", "value3")
+	list, _ := s.Data[0]["list"].([]string)
+	if len(list) != 3 {
+		t.Fatalf("Expected list length to be 3, got %d", len(list))
+	}
+
+	//test if the list contents are correct
+	if list[0] != "value3" || list[1] != "value1" || list[2] != "value2" {
+		t.Fatalf("Expected list to be [value3 value1 value2], got %v", list)
+	}
+}
+
+// test RPush
+func TestRPush(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	//test if the response is correct
+	listLen := s.RPush(0, "list", "value1", "value2")
+	if listLen != 2 {
+		t.Fatalf("Expected response to be 2, got %d", listLen)
+	}
+
+	//test if the list length is correct
+	s.RPush(0, "list", "value3")
+	list, _ := s.Data[0]["list"].([]string)
+	if len(list) != 3 {
+		t.Fatalf("Expected list length to be 3, got %d", len(list))
+	}
+
+	//test if the list contents are correct
+	if list[0] != "value1" || list[1] != "value2" || list[2] != "value3" {
+		t.Fatalf("Expected list to be [value3 value1 value2], got %v", list)
+	}
+}
+
+// test LPop
+func TestLPop(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	//test if LPop returns nil when key does not exist
+	t.Log("test if LPOP returns nil when key does not exist")
+	value, _ := s.LPop(0, "list", nil)
+	if value != nil {
+		t.Fatalf("Expected got nil, got %s", value)
+	}
+
+	s.LPush(0, "list", "value1", "value2", "value3")
+
+	//test if LPOP returns error when called with count argument smaller than 0
+	t.Log("test if LPOP returns error when called with count argument smaller than 0")
+	count := -1
+	value, err := s.LPop(0, "list", &count)
+	if err == nil {
+		t.Fatalf("Expected error when calling LPOP with count smaller than 0")
+	}
+
+	//test if LPOP returns empty list when called with count = 0
+	t.Log("test if LPOP returns empty list when called with count = 0")
+	count = 0
+	value, err = s.LPop(0, "list", &count)
+	if (err != nil) || len(value.([]string)) != 0 {
+		t.Fatalf("Expected [] (empty list), got %s, value length is %d ", value, len(value.([]string)))
+	}
+
+	// test if LPOP returns the first element as string when called with count = nil
+	t.Log("test if LPOP returns the first element as string when called with count = nil")
+	value, err = s.LPop(0, "list", nil)
+	if (err != nil) || value.(string) != "value1" {
+		t.Fatalf("Expected value1, got %s", value)
+	}
+
+	//test if LPop returns the list when called with count argument greater than list length
+	t.Log("test if LPOP returns the list when called with count argument greater than list length")
+	count = 3
+	value, err = s.LPop(0, "list", &count)
+	if (err != nil) || value.([]string)[0] != "value2" || value.([]string)[1] != "value3" {
+		t.Fatalf("Expected [value2 value3], got %v", value)
+	}
+
+	//test if LPOP returns nil when the list is empty
+	t.Log("test if LPOP returns nil when the list is empty")
+	value, err = s.LPop(0, "list", &count)
+	if value != nil {
+		t.Fatalf("Expected nil, got %v", value)
+	}
+}
+
+// test RPop
+func TestRPop(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	//test if RPop returns nil when key does not exist
+	t.Log("test if RPop returns nil when key does not exist")
+	value, _ := s.RPop(0, "list", nil)
+	if value != nil {
+		t.Fatalf("Expected got nil, got %s", value)
+	}
+
+	s.LPush(0, "list", "value1", "value2", "value3")
+
+	//test if RPop returns error when called with count argument smaller than 0
+	t.Log("test if RPop returns error when called with count argument smaller than 0")
+	count := -1
+	value, err := s.RPop(0, "list", &count)
+	if err == nil {
+		t.Fatalf("Expected error when calling RPop with count smaller than 0")
+	}
+
+	//test if RPop returns empty list when called with count = 0
+	t.Log("test if RPop returns empty list when called with count = 0")
+	count = 0
+	value, err = s.RPop(0, "list", &count)
+	if (err != nil) || len(value.([]string)) != 0 {
+		t.Fatalf("Expected [] (empty list), got %s, value length is %d ", value, len(value.([]string)))
+	}
+	s.Del(0, "list")
+
+	// test if RPop returns the first element as string when called with count = nil
+	s.LPush(0, "list", "value1", "value2", "value3")
+	t.Log("test if RPop returns the last element as string when called with count = nil")
+	value, err = s.RPop(0, "list", nil)
+	if (err != nil) || value == nil || value.(string) != "value3" {
+		t.Fatalf("Expected value3, got %s", value)
+	}
+
+	//test if RPop returns the list when called with count argument greater than list length
+	t.Log("test if RPop returns the list when called with count argument greater than list length")
+	count = 3
+	value, err = s.RPop(0, "list", &count)
+	if (err != nil) || value.([]string)[0] != "value1" || value.([]string)[1] != "value2" {
+		t.Fatalf("Expected [value1 value2], got %v", value)
+	}
+
+	//test if RPop returns nil when the list is empty
+	t.Log("test if RPop returns nil when the list is empty")
+	value, err = s.RPop(0, "list", &count)
+	if value != nil {
+		t.Fatalf("Expected nil, got %v", value)
+	}
+}

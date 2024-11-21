@@ -182,3 +182,112 @@ func (s *Store) TTL(dbIndex int, key string) (int, error) {
 	ttl := s.Expires[dbIndex][key].Sub(time.Now())
 	return int(ttl.Seconds()), nil
 }
+
+// LPush inserts values at the begining of a list
+func (s *Store) LPush(dbIndex int, key string, values ...string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	list, _ := s.Data[dbIndex][key].([]string)
+	list = append(values, list...)
+	s.Data[dbIndex][key] = list
+	s.aofChan <- fmt.Sprintf("LPUSH %d %s %s", dbIndex, key, values)
+	return len(list)
+}
+
+// RPush inserts values at the end of a list
+func (s *Store) RPush(dbIndex int, key string, values ...string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	list, _ := s.Data[dbIndex][key].([]string)
+	list = append(list, values...)
+	s.Data[dbIndex][key] = list
+	s.aofChan <- fmt.Sprintf("RPUSH %d %s %s", dbIndex, key, values)
+	return len(list)
+}
+
+// LPop removes and returns the first N elements of the list, where N is equal to count, or nil if the list is empty.
+func (s *Store) LPop(dbIndex int, key string, pcount *int) (interface{}, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	count := 1
+	//if not nil, get the count from the caller
+	if pcount != nil {
+		count = *pcount
+	}
+
+	// Check if count is smaller than 0 and value came from caller
+	if count < 0 {
+		return nil, fmt.Errorf("value is out of range, must be positive")
+	}
+
+	list, ok := s.Data[dbIndex][key].([]string)
+	if !ok {
+		return nil, nil
+	}
+	len := len(list)
+	if len == 0 {
+		return nil, nil
+	}
+	if count > len {
+		count = len
+	}
+	popped := list[:count]
+
+	// Remove the popped elements from the list
+	s.Data[dbIndex][key] = list[count:]
+
+	// Log the operation
+	s.aofChan <- fmt.Sprintf("LPOP %d %s %d", dbIndex, key, count)
+
+	if count == 1 && pcount == nil {
+		return popped[0], nil
+	} else {
+		return popped, nil
+	}
+
+}
+
+// RPop removes and returns the last N elements of the list, where N is equal to count, or nil if the list is empty.
+func (s *Store) RPop(dbIndex int, key string, pcount *int) (interface{}, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	count := 1
+	//if not nil, get the count from the caller
+	if pcount != nil {
+		count = *pcount
+	}
+
+	// Check if count is smaller than 0 and value came from caller
+	if count < 0 && pcount != nil {
+		return nil, fmt.Errorf("value is out of range, must be positive")
+	} else {
+		list, ok := s.Data[dbIndex][key].([]string)
+		if !ok {
+			return nil, nil
+		}
+		len := len(list)
+		if len == 0 {
+			return nil, nil
+		}
+		if count > len {
+			count = len
+		}
+		popped := list[(len - count):]
+
+		// Remove the popped elements from the list
+		s.Data[dbIndex][key] = list[:(len - count)]
+
+		// Log the operation
+		s.aofChan <- fmt.Sprintf("RPOP %d %s %d", dbIndex, key, count)
+
+		if count == 1 && pcount == nil {
+			return popped[0], nil
+		} else {
+			return popped, nil
+		}
+	}
+}
