@@ -319,9 +319,29 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		}
 		fmt.Fprintln(conn, "OK")
 
+	case "TYPE":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'TYPE' command")
+			return
+		}
+		vtype := s.store.Type(dbIndex, parts[1])
+		fmt.Fprintln(conn, vtype)
+
+	case "KEYS":
+		if len(parts) != 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'TYPE' command")
+			return
+		}
+		pattern := parts[1]
+		keys, err := s.store.Keys(dbIndex, pattern)
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+		}
+		fmt.Fprint(conn, keys)
+
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
-		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR, TTL, SELECT, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LTRIM")
+		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR, TTL, SELECT, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LTRIM, RENAME, TYPE, KEYS")
 	}
 }
 

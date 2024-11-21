@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -399,4 +400,43 @@ func (s *Store) Rename(dbIndex int, key, newkey string) error {
 	s.aofChan <- fmt.Sprintf("RENAME %d %s %s", dbIndex, key, newkey)
 
 	return nil
+}
+
+// Tupe determine the type of value stored at a key
+func (s *Store) Type(dbIndex int, key string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// verify if key exists
+	if val, exists := s.Data[dbIndex][key]; exists {
+		switch val.(type) {
+		case string:
+			return "string"
+		case []string:
+			return "list"
+			//add more types below
+		}
+	}
+	return "none"
+}
+
+// Keys returns all keys matching a pattern
+func (s *Store) Keys(dbIndex int, pattern string) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	keys := []string{}
+	// Convert Redis-like pattern to a valid regex
+	regexPattern := "^" + strings.ReplaceAll(pattern, "*", ".*") + "$"
+	re, err := regexp.Compile(regexPattern)
+	if err != nil {
+		return nil, err
+	}
+
+	for key := range s.Data[dbIndex] {
+		if re.MatchString(key) {
+			keys = append(keys, key)
+		}
+	}
+	return keys, nil
 }

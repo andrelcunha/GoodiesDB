@@ -390,3 +390,69 @@ func TestRename(t *testing.T) {
 		t.Fatalf("Expected value1, got %s", value)
 	}
 }
+
+// Test Type
+func TestType(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+	dbIndex := 0
+
+	// Arrange
+	s.Set(dbIndex, "myString", "value1")
+	myList := []string{"one", "two", "three"}
+	s.RPush(dbIndex, "myList", myList...)
+
+	// int
+	s.Lock()
+	s.Data[dbIndex]["myInt"] = 123
+	s.mu.Unlock()
+
+	// test if myString is a string
+	stype := s.Type(dbIndex, "myString")
+	if stype != "string" {
+		t.Logf("expected 'string', got %s", stype)
+		t.Fail()
+	}
+
+	// test if myList is a list
+	ltype := s.Type(dbIndex, "myList")
+	if ltype != "list" {
+		t.Logf("expected 'list', got '%s'", ltype)
+		t.Fail()
+	}
+
+	// test if a non-existing key is type 'none'
+	ntype := s.Type(dbIndex, "other")
+	if ntype != "none" {
+		t.Logf("expected 'none', got '%s'", ntype)
+		t.Fail()
+	}
+
+	// test if an integer is none
+	itype := s.Type(dbIndex, "myInt")
+	if itype != "none" {
+		t.Logf("expected 'none', got '%s'", itype)
+		t.Fail()
+	}
+}
+
+// Test Keys
+func TestKeys(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+	indexDb := 0
+
+	s.Set(indexDb, "key1", "value1")
+	s.Set(indexDb, "key2", "value2")
+	list1 := []string{"one", "two", "tree"}
+	s.RPush(indexDb, "list1", list1...)
+
+	keys, err := s.Keys(indexDb, "*")
+	if err != nil {
+		t.Fatalf("Unexpected error: %s", err)
+	}
+	expeted := []string{"key1", "key2", "list1"}
+	if !slice.Equal(keys, expeted) {
+		t.Logf("expected %v, got %v", expeted, keys)
+	}
+}
