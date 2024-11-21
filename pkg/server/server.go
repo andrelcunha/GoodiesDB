@@ -367,3 +367,15 @@ func (s *Server) selectDb(conn net.Conn, dbIndex int) {
 	defer s.mu.Unlock()
 	s.connectionDbs[conn] = dbIndex
 }
+
+const Version = "1.0.0"
+
+// Info returns server info
+func (s *Server) Info() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return fmt.Sprintf("Server info:\n\n"+
+		"Version: %s\n",
+		Version,
+	)
+}
