@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"com.github.andrelcunha.go-redis-clone/internal/utils/slice"
 	"com.github.andrelcunha.go-redis-clone/pkg/store"
 )
 
@@ -48,11 +49,18 @@ func TestRebuildStoreFromAOF(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Rebuild state from AOF
-	newStore := store.NewStore(aofChan)
+	newAofFilename := "new_test_appendonly.aof"
+	os.Remove(newAofFilename)
+	newAofChan := make(chan string, 100)
+	go AOFWriter(newAofChan, newAofFilename)
+
+	newStore := store.NewStore(newAofChan)
+
 	err := RebuildStoreFromAOF(newStore, aofFilename)
 	if err != nil {
 		t.Fatalf("Failed to rebuild state from AOF: %v", err)
 	}
+	// set new aofFilename
 
 	// Verify Key2 has been renamed to RenamedKey
 	value, ok := newStore.Get(dbIndex, "RenamedKey")
@@ -63,16 +71,10 @@ func TestRebuildStoreFromAOF(t *testing.T) {
 
 	// Verify List1 contents
 	list, _ := newStore.LRange(dbIndex, "List1", 0, -1)
-	expectedList := []string{"Value2"}
-	if len(list) != len(expectedList) {
-		t.Errorf("Expected list length to be %d, got %d", len(expectedList), len(list))
+	expectedList := []string{"Value1"}
+	if !slice.Equal(list, expectedList) {
+		t.Errorf("Expected %v, got %v", expectedList, list)
 		t.Fail()
-	}
-	for i, v := range list {
-		if v != expectedList[i] {
-			t.Errorf("Expected list[%d] to be %s, got %s", i, expectedList[i], v)
-			t.Fail()
-		}
 	}
 
 	// Wait for the key to expire
@@ -86,6 +88,7 @@ func TestRebuildStoreFromAOF(t *testing.T) {
 
 	// Clean up the AOF file
 	os.Remove(aofFilename)
+	os.Remove(newAofFilename)
 }
 
 // Test aofRename
@@ -100,7 +103,21 @@ func TestAofRename(t *testing.T) {
 	if !ok || value != "value1" {
 		t.Fatalf("Expeted 'value1, got %s", value)
 	}
+}
 
+// Test aofLTrim
+func TestAofLTrim(t *testing.T) {
+	cmd := "LTRIM 0 List1 1 2"
+	parts, s, dbIndex := prepareCmdTest(cmd)
+
+	s.LPush(dbIndex, "List1", "Value1", "Value2", "Value3")
+	aofLTrim(parts, s, dbIndex)
+	list, _ := s.LRange(dbIndex, "List1", 0, -1)
+	expectedList := []string{"Value2, Value1"}
+	if slice.Equal(list, expectedList) {
+		t.Logf("Expected %v, got %v", expectedList, list)
+		t.Fail()
+	}
 }
 
 func prepareCmdTest(cmd string) ([]string, *store.Store, int) {

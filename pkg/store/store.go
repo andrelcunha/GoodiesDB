@@ -175,6 +175,7 @@ func (s *Store) TTL(dbIndex int, key string) (int, error) {
 
 // LPush inserts values at the begining of a list
 func (s *Store) LPush(dbIndex int, key string, values ...string) int {
+	logString := fmt.Sprintf("LPUSH %d %s %s", dbIndex, key, strings.Join(values, " "))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -184,19 +185,20 @@ func (s *Store) LPush(dbIndex int, key string, values ...string) int {
 	list = append(values, list...)
 
 	s.Data[dbIndex][key] = list
-	s.aofChan <- fmt.Sprintf("LPUSH %d %s %s", dbIndex, key, strings.Join(values, " "))
+	s.aofChan <- logString
 	return len(list)
 }
 
 // RPush inserts values at the end of a list
 func (s *Store) RPush(dbIndex int, key string, values ...string) int {
+	logString := fmt.Sprintf("RPUSH %d %s %s", dbIndex, key, strings.Join(values, " "))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	list, _ := s.Data[dbIndex][key].([]string)
 	list = append(list, values...)
 	s.Data[dbIndex][key] = list
-	s.aofChan <- fmt.Sprintf("RPUSH %d %s %s", dbIndex, key, strings.Join(values, " "))
+	s.aofChan <- logString
 	return len(list)
 }
 

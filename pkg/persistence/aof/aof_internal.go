@@ -14,11 +14,11 @@ func aofRename(parts []string, s *store.Store, dbIndex int) {
 }
 
 func aofLTrim(parts []string, s *store.Store, dbIndex int) {
-	if len(parts) != 4 {
-		start, _ := strconv.Atoi(parts[2])
-		stop, _ := strconv.Atoi(parts[3])
+	if len(parts) == 5 {
+		start, _ := strconv.Atoi(parts[3])
+		stop, _ := strconv.Atoi(parts[4])
 
-		s.LTrim(dbIndex, parts[1], start, stop)
+		s.LTrim(dbIndex, parts[2], start, stop)
 	}
 }
 
