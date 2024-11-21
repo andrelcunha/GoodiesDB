@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"com.github.andrelcunha.go-redis-clone/internal/utils/slice"
 )
 
 type Store struct {
@@ -189,7 +191,10 @@ func (s *Store) LPush(dbIndex int, key string, values ...string) int {
 	defer s.mu.Unlock()
 
 	list, _ := s.Data[dbIndex][key].([]string)
+	// Reverse values
+	slice.Reverse(values)
 	list = append(values, list...)
+
 	s.Data[dbIndex][key] = list
 	s.aofChan <- fmt.Sprintf("LPUSH %d %s %s", dbIndex, key, values)
 	return len(list)
@@ -300,4 +305,84 @@ func (s *Store) RPop(dbIndex int, key string, pcount *int) (interface{}, error) 
 			return popped, nil
 		}
 	}
+}
+
+// LRange returns the specified elements of the list
+func (s *Store) LRange(dbIndex int, key string, start, stop int) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Check if the key has expired
+	if s.isExpired(dbIndex, key) {
+		return nil, nil
+	}
+
+	list, ok := s.Data[dbIndex][key].([]string)
+	if !ok {
+		return nil, nil
+	}
+
+	len := len(list)
+
+	// Adjust start and stop indices if they are out of bounds
+	if start < 0 {
+		start = len + start
+	}
+	if stop < 0 {
+		stop = len + stop
+	}
+	if start < 0 {
+		start = 0
+	}
+	if stop >= len {
+		stop = len - 1
+	}
+
+	if start > stop || start >= len || stop < 0 {
+		return []string{}, nil
+	}
+
+	return list[start : stop+1], nil
+}
+
+// LTrim removes elements from a list
+func (s *Store) LTrim(dbIndex int, key string, start, stop int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Check if the key has expired
+	if s.isExpired(dbIndex, key) {
+		return nil
+	}
+
+	list, ok := s.Data[dbIndex][key].([]string)
+	if !ok {
+		return nil
+	}
+
+	len := len(list)
+
+	// Adjust start and stop indices if they are out of bounds
+	if start < 0 {
+		start = len + start
+	}
+	if stop < 0 {
+		stop = len + stop
+	}
+	if start < 0 {
+		start = 0
+	}
+	if stop >= len {
+		stop = len - 1
+	}
+
+	if start > stop || start >= len {
+		s.Del(dbIndex, key)
+		return nil
+	}
+
+	// Remove the elements from the list
+	s.Data[dbIndex][key] = list[start : stop+1]
+
+	return nil
 }

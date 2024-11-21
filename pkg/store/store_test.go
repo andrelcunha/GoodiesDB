@@ -3,6 +3,8 @@ package store
 import (
 	"testing"
 	"time"
+
+	"com.github.andrelcunha.go-redis-clone/internal/utils/slice"
 )
 
 func TestStore(t *testing.T) {
@@ -184,8 +186,9 @@ func TestLPush(t *testing.T) {
 	}
 
 	//test if the list contents are correct
-	if list[0] != "value3" || list[1] != "value1" || list[2] != "value2" {
-		t.Fatalf("Expected list to be [value3 value1 value2], got %v", list)
+	expected := []string{"value3", "value2", "value1"}
+	if !slice.Equal(list, expected) {
+		t.Fatalf("Expected list to be [value3 value2 value1], got %v", list)
 	}
 }
 
@@ -246,7 +249,7 @@ func TestLPop(t *testing.T) {
 	// test if LPOP returns the first element as string when called with count = nil
 	t.Log("test if LPOP returns the first element as string when called with count = nil")
 	value, err = s.LPop(0, "list", nil)
-	if (err != nil) || value.(string) != "value1" {
+	if (err != nil) || value.(string) != "value3" {
 		t.Fatalf("Expected value1, got %s", value)
 	}
 
@@ -254,8 +257,9 @@ func TestLPop(t *testing.T) {
 	t.Log("test if LPOP returns the list when called with count argument greater than list length")
 	count = 3
 	value, err = s.LPop(0, "list", &count)
-	if (err != nil) || value.([]string)[0] != "value2" || value.([]string)[1] != "value3" {
-		t.Fatalf("Expected [value2 value3], got %v", value)
+	expected := []string{"value2", "value1"}
+	if (err != nil) || !slice.Equal(value.([]string), expected) {
+		t.Fatalf("Expected [value2 value1], got %v", value)
 	}
 
 	//test if LPOP returns nil when the list is empty
@@ -301,16 +305,17 @@ func TestRPop(t *testing.T) {
 	s.LPush(0, "list", "value1", "value2", "value3")
 	t.Log("test if RPop returns the last element as string when called with count = nil")
 	value, err = s.RPop(0, "list", nil)
-	if (err != nil) || value == nil || value.(string) != "value3" {
-		t.Fatalf("Expected value3, got %s", value)
+	if (err != nil) || value == nil || value.(string) != "value1" {
+		t.Fatalf("Expected value1, got %s", value)
 	}
 
 	//test if RPop returns the list when called with count argument greater than list length
 	t.Log("test if RPop returns the list when called with count argument greater than list length")
 	count = 3
 	value, err = s.RPop(0, "list", &count)
-	if (err != nil) || value.([]string)[0] != "value1" || value.([]string)[1] != "value2" {
-		t.Fatalf("Expected [value1 value2], got %v", value)
+	expected := []string{"value3", "value2"}
+	if (err != nil) || !slice.Equal(value.([]string), expected) {
+		t.Fatalf("Expected [value3 value2], got %v", value)
 	}
 
 	//test if RPop returns nil when the list is empty
@@ -319,4 +324,35 @@ func TestRPop(t *testing.T) {
 	if value != nil {
 		t.Fatalf("Expected nil, got %v", value)
 	}
+}
+
+// test LRange
+func TestLRange(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	s.LPush(0, "list", "value1", "value2", "value3", "value4")
+
+	// Test full range
+	t.Log("test if LRange returns the full range")
+	list, err := s.LRange(0, "list", 0, -1)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	expected := []string{"value4", "value3", "value2", "value1"}
+	if !slice.Equal(list, expected) {
+		t.Fatalf("Expected %v, got %v", expected, list)
+	}
+
+	// Test partial range
+	t.Log("test if LRange returns the partial range")
+	list, err = s.LRange(0, "list", 1, 2)
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	expected = []string{"value3", "value2"}
+	if !slice.Equal(list, expected) {
+		t.Fatalf("Expected %v, got %v", expected, list)
+	}
+
 }

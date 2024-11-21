@@ -214,9 +214,103 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		s.selectDb(conn, dbIndex)
 		fmt.Fprintln(conn, "OK")
 
+	case "LPUSH":
+		if len(parts) < 3 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'LPUSH' command")
+			return
+		}
+		length := s.store.LPush(dbIndex, parts[1], parts[2:]...)
+		fmt.Fprintln(conn, length)
+
+	case "RPUSH":
+		if len(parts) < 3 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'RPUSH' command")
+			return
+		}
+		length := s.store.RPush(dbIndex, parts[1], parts[2:]...)
+		fmt.Fprintln(conn, length)
+
+	case "LPOP":
+		if len(parts) != 2 && len(parts) != 3 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'LPOP' command")
+			return
+		}
+		var count *int
+		if len(parts) == 3 {
+			c, err := strconv.Atoi(parts[2])
+			if err != nil {
+				fmt.Fprintln(conn, "ERR value is out of range, must be positive")
+				return
+			}
+			count = &c
+		}
+		value, err := s.store.LPop(dbIndex, parts[1], count)
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, value)
+
+	case "RPOP":
+		if len(parts) != 2 && len(parts) != 3 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'RPOP' command")
+			return
+		}
+		var count *int
+		if len(parts) == 3 {
+			c, err := strconv.Atoi(parts[2])
+			if err != nil {
+				fmt.Fprintln(conn, "ERR value is out of range, must be positive")
+				return
+			}
+			count = &c
+		}
+		value, err := s.store.RPop(dbIndex, parts[1], count)
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, value)
+
+	case "LRANGE":
+		if len(parts) != 4 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'LRANGE' command")
+			return
+		}
+		start, err1 := strconv.Atoi(parts[2])
+		stop, err2 := strconv.Atoi(parts[3])
+		if err1 != nil || err2 != nil {
+			fmt.Fprintln(conn, "ERR value is out of range, must be positive")
+			return
+		}
+		values, err := s.store.LRange(dbIndex, parts[1], start, stop)
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, values)
+
+	case "LTRIM":
+		if len(parts) != 4 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'LTRIM' command")
+			return
+		}
+		start, err1 := strconv.Atoi(parts[2])
+		stop, err2 := strconv.Atoi(parts[3])
+		if err1 != nil || err2 != nil {
+			fmt.Fprintln(conn, "ERR value is out of range, must be positive")
+			return
+		}
+		err := s.store.LTrim(dbIndex, parts[1], start, stop)
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, "OK")
+
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
-		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR, TTL")
+		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR, TTL, SELECT, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LTRIM")
 	}
 }
 
