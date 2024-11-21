@@ -308,6 +308,17 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		}
 		fmt.Fprintln(conn, "OK")
 
+	case "RENAME":
+		if len(parts) != 3 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'RENAME' command")
+			return
+		}
+		if err := s.store.Rename(dbIndex, parts[1], parts[2]); err != nil {
+			fmt.Fprintln(conn, "ERR", err.Error())
+			return
+		}
+		fmt.Fprintln(conn, "OK")
+
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
 		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR, TTL, SELECT, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LTRIM")

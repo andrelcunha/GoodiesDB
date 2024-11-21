@@ -354,5 +354,39 @@ func TestLRange(t *testing.T) {
 	if !slice.Equal(list, expected) {
 		t.Fatalf("Expected %v, got %v", expected, list)
 	}
+}
 
+// Test Rename
+func TestRename(t *testing.T) {
+	aofChan := make(chan string, 100)
+	s := NewStore(aofChan)
+
+	// test if Rename returns error when key does not exist
+	t.Log("test if Rename returns error when key does not exist")
+	s.Rename(0, "key1", "key2")
+	value, ok := s.Get(0, "key2")
+	if ok {
+		t.Fatalf("Expected ok equal false, got %v", ok)
+	}
+
+	// test if Rename does not rename when key exists
+	t.Log("test if Rename does not rename when key exists")
+	s.Set(0, "key1", "value1")
+	s.Rename(0, "key1", "key2")
+	value, ok = s.Get(0, "key2")
+	if value != "value1" {
+		t.Fatalf("Expected value1, got %s", value)
+	}
+	s.Del(0, "key1")
+	s.Del(0, "key2")
+
+	// test if Rename does not rename when key exists and new key already exists
+	t.Log("test if Rename does not rename when key exists and new key already exists")
+	s.Set(0, "key1", "value1")
+	s.Set(0, "key2", "value2")
+	s.Rename(0, "key1", "key2")
+	value, ok = s.Get(0, "key2")
+	if value != "value1" {
+		t.Fatalf("Expected value1, got %s", value)
+	}
 }

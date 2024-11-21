@@ -1,4 +1,4 @@
-package persistence
+package aof
 
 import (
 	"bufio"
@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"com.github.andrelcunha.go-redis-clone/pkg/store"
 )
@@ -53,55 +52,34 @@ func RebuildStoreFromAOF(s *store.Store, filename string) error {
 		switch parts[0] {
 
 		case "SET":
-			if len(parts) == 4 {
-				s.Set(dbIndex, parts[2], parts[3])
-			}
+			aofSet(parts, s, dbIndex)
 
 		case "DEL":
-			if len(parts) == 3 {
-				s.Del(dbIndex, parts[2])
-			}
+			aofDel(parts, s, dbIndex)
 
 		case "SETNX":
-			if len(parts) == 4 {
-				s.SetNX(dbIndex, parts[2], parts[3])
-			}
+			aofSetNX(parts, s, dbIndex)
 
 		case "EXPIRE":
-			if len(parts) == 4 {
-				key := parts[2]
-				ttl, err := strconv.Atoi(parts[3])
-				if err == nil {
-					duration := time.Duration(ttl) * time.Second
-					s.Expire(dbIndex, key, duration)
-				}
-			}
+			aofExpire(parts, s, dbIndex)
 
 		case "LPUSH":
-			if len(parts) >= 4 {
-				s.LPush(dbIndex, parts[2], parts[3:]...)
-			}
+			aofLPush(parts, s, dbIndex)
 
 		case "RPUSH":
-			if len(parts) >= 4 {
-				s.RPush(dbIndex, parts[2], parts[3:]...)
-			}
+			aofRPush(parts, s, dbIndex)
 
 		case "LPOP":
-			if len(parts) == 4 {
-				count, err := strconv.Atoi(parts[3])
-				if err == nil {
-					s.LPop(dbIndex, parts[2], &count)
-				}
-			}
+			aofLPop(parts, s, dbIndex)
 
 		case "RPOP":
-			if len(parts) == 4 {
-				count, err := strconv.Atoi(parts[3])
-				if err == nil {
-					s.RPop(dbIndex, parts[2], &count)
-				}
-			}
+			aofRpop(parts, s, dbIndex)
+
+		case "LTRIM":
+			aofLTrim(parts, s, dbIndex)
+
+		case "RENAME":
+			aofRename(parts, s, dbIndex)
 
 		default:
 			log.Printf("Unknown command: %s", cmd)

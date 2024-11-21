@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"com.github.andrelcunha.go-redis-clone/pkg/persistence/aof"
 	"com.github.andrelcunha.go-redis-clone/pkg/store"
 )
 
@@ -15,7 +16,7 @@ func TestSaveLoadSnapshot(t *testing.T) {
 	dbIndex := 0
 
 	// Start the AOF writer
-	go AOFWriter(aofChan, aofFilename)
+	go aof.AOFWriter(aofChan, aofFilename)
 
 	// Initialize a new store with the AOF file
 	s := store.NewStore(aofChan)

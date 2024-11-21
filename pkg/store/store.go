@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -73,8 +74,7 @@ func (s *Store) Get(dbIndex int, key string) (string, bool) {
 func (s *Store) Del(dbIndex int, key string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.Data[dbIndex], key)
-	delete(s.Expires[dbIndex], key)
+	s.delKey(dbIndex, key)
 	s.aofChan <- fmt.Sprintf("DEL %d %s", dbIndex, key)
 }
 
@@ -109,19 +109,6 @@ func (s *Store) Expire(dbIndex int, key string, ttl time.Duration) bool {
 		s.Expires[dbIndex][key] = time.Now().Add(ttl)
 		s.aofChan <- fmt.Sprintf("EXPIRE %d %s %d", dbIndex, key, int(ttl.Seconds()))
 		return true
-	}
-	return false
-}
-
-// isExpired checks if a key has expired
-func (s *Store) isExpired(dbIndex int, key string) bool {
-	if exp, exists := s.Expires[dbIndex][key]; exists {
-		if time.Now().After(exp) {
-			delete(s.Data[dbIndex], key)
-			delete(s.Expires[dbIndex], key)
-			s.aofChan <- fmt.Sprintf("DEL %d %s", dbIndex, key)
-			return true
-		}
 	}
 	return false
 }
@@ -196,7 +183,7 @@ func (s *Store) LPush(dbIndex int, key string, values ...string) int {
 	list = append(values, list...)
 
 	s.Data[dbIndex][key] = list
-	s.aofChan <- fmt.Sprintf("LPUSH %d %s %s", dbIndex, key, values)
+	s.aofChan <- fmt.Sprintf("LPUSH %d %s %s", dbIndex, key, strings.Join(values, " "))
 	return len(list)
 }
 
@@ -208,7 +195,7 @@ func (s *Store) RPush(dbIndex int, key string, values ...string) int {
 	list, _ := s.Data[dbIndex][key].([]string)
 	list = append(list, values...)
 	s.Data[dbIndex][key] = list
-	s.aofChan <- fmt.Sprintf("RPUSH %d %s %s", dbIndex, key, values)
+	s.aofChan <- fmt.Sprintf("RPUSH %d %s %s", dbIndex, key, strings.Join(values, " "))
 	return len(list)
 }
 
@@ -383,6 +370,33 @@ func (s *Store) LTrim(dbIndex int, key string, start, stop int) error {
 
 	// Remove the elements from the list
 	s.Data[dbIndex][key] = list[start : stop+1]
+
+	// Log the operation
+	s.aofChan <- fmt.Sprintf("LTRIM %d %s %d %d", dbIndex, key, start, stop)
+
+	return nil
+}
+
+// Rename Renames a key and overwrites the destination
+func (s *Store) Rename(dbIndex int, key, newkey string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Check if the key has expired
+	if s.isExpired(dbIndex, key) {
+		return nil
+	}
+
+	// Check if the new key already exists
+	if _, ok := s.Data[dbIndex][newkey]; ok {
+		// Overwrite the destination
+		s.delKey(dbIndex, newkey)
+	}
+	s.Data[dbIndex][newkey] = s.Data[dbIndex][key]
+	s.delKey(dbIndex, key)
+
+	// Log the operation
+	s.aofChan <- fmt.Sprintf("RENAME %d %s %s", dbIndex, key, newkey)
 
 	return nil
 }

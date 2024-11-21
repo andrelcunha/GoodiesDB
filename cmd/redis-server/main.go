@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"com.github.andrelcunha.go-redis-clone/pkg/persistence"
+	"com.github.andrelcunha.go-redis-clone/pkg/persistence/aof"
 	"com.github.andrelcunha.go-redis-clone/pkg/server"
 	"com.github.andrelcunha.go-redis-clone/pkg/store"
 	"github.com/joho/godotenv"
@@ -48,7 +49,7 @@ func main() {
 	}()
 
 	// Start the AOF writer
-	go persistence.AOFWriter(aofChan, "appendonly.aof")
+	go aof.AOFWriter(aofChan, "appendonly.aof")
 
 	// Start the server
 	if err := srv.Start(":6379"); err != nil {
