@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"com.github.andrelcunha.go-redis-clone/pkg/server"
+	"com.github.andrelcunha.GoodiesDB/pkg/server"
 	"github.com/joho/godotenv"
 )
 

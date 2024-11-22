@@ -1,6 +1,10 @@
-# Redis Clone
+# Goodies DB - A Redis implementation in Go
 
-Redis Clone is an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. This project is implemented in Go (Golang) and covers various aspects of Redis, including in-memory storage, data persistence, and advanced features like pub/sub and transactions.
+GoodiesDb started as a Redis implementation written in Go, an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis's commands, e.g. `AUTH`, `SET`, `GET`, `DEL`, `EXISTS`, `SETNX`, `EXPIRE`, `INCR`, `DECR`, `TTL`, `SELECT`, `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LTRIM`, `RENAME`, `TYPE`, `KEYS`, `INFO`, `PING`, `ECHO`, `QUIT`, `FLUSHDB` and `FLUSHALL`.
+
+**Disclaimer:** This is not a production-ready Redis clone, and it is not intended for use in production environments (yet).
+
+
 
 ## Table of Contents
 - [Introduction](#introduction)
@@ -28,8 +32,8 @@ To get started with Redis Clone, follow these steps:
 
 1. **Clone the repository**:
     ```bash
-    git clone https://github.com/yourusername/redis-clone.git
-    cd redis-clone
+    git clone https://github.com/andrelcunha/GoodiesDB.git
+    cd GoodiesDB
     ```
 
 2. **Install dependencies**:
@@ -39,16 +43,16 @@ To get started with Redis Clone, follow these steps:
 
 3. **Build the project**:
     ```bash
-    go build -o redis-server ./cmd/redis-server
+    make build
     ```
 
 ## Usage
-Run the Redis Clone server:
+Run the GoodiesDb server:
 
 ```bash
-./redis-server
+make run
 ```
-You can then interact with the server using any Redis client.
+You can then interact with the server using PuTTY on raw TCP port 6379.
 
 ## License
 This project is licensed under the MIT License.

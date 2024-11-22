@@ -1,7 +1,7 @@
 VERSION := $(shell git describe --tags --always)
 
 run: build
-	@./bin/goredisclone
+	@./bin/goodiesDb
 
 build:
-	@go build -ldflags "-X main.version=$(VERSION)" -o bin/goredisclone ./cmd/redis-server
+	@go build -ldflags "-X main.version=$(VERSION)" -o bin/goodiesDb ./cmd/goodiesdb-server

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"com.github.andrelcunha.go-redis-clone/internal/utils/slice"
+	"com.github.andrelcunha.GoodiesDB/internal/utils/slice"
 )
 
 func TestStore(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"com.github.andrelcunha.go-redis-clone/pkg/persistence/aof"
-	"com.github.andrelcunha.go-redis-clone/pkg/persistence/rdb"
-	"com.github.andrelcunha.go-redis-clone/pkg/store"
+	"com.github.andrelcunha.GoodiesDB/pkg/persistence/aof"
+	"com.github.andrelcunha.GoodiesDB/pkg/persistence/rdb"
+	"com.github.andrelcunha.GoodiesDB/pkg/store"
 )
 
 // Server represents a TCP server
@@ -49,6 +49,7 @@ func NewServer(config *Config) *Server {
 
 // Start starts the server
 func (s *Server) Start() error {
+	fmt.Println(s.asciiLogo())
 	fmt.Println("Starting Redis Clone Server...")
 
 	if s.config.UseRDB || s.config.UseAOF {

@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"com.github.andrelcunha.go-redis-clone/pkg/persistence/aof"
-	"com.github.andrelcunha.go-redis-clone/pkg/persistence/rdb"
+	"com.github.andrelcunha.GoodiesDB/pkg/persistence/aof"
+	"com.github.andrelcunha.GoodiesDB/pkg/persistence/rdb"
 )
 
 func (s *Server) isAuthenticates(conn net.Conn) bool {
@@ -136,4 +136,16 @@ func (s *Server) recoverStore() {
 	if !flagOk {
 		fmt.Println("None of the recovery files are healthy. Starting with an empty store.")
 	}
+}
+
+func (s *Server) asciiLogo() string {
+	return `
+  G)gggg                      d) ##                 D)dddd   B)bbbb   
+ G)                           d)                    D)   dd  B)   bb  
+G)  ggg   o)OOO   o)OOO   d)DDDD i) e)EEEEE  s)SSSS D)    dd B)bbbb   
+G)    gg o)   OO o)   OO d)   DD i) e)EEEE  s)SSSS  D)    dd B)   bb  
+ G)   gg o)   OO o)   OO d)   DD i) e)           s) D)    dd B)    bb 
+  G)ggg   o)OOO   o)OOO   d)DDDD i)  e)EEEE s)SSSS  D)ddddd  B)bbbbb  
+
+`
 }

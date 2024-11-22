@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"os"
 
-	"com.github.andrelcunha.go-redis-clone/pkg/store"
+	"com.github.andrelcunha.GoodiesDB/pkg/store"
 )
 
 // SaveSnapshot saves the current state of the store to a file

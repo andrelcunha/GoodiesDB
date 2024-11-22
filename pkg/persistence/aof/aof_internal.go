@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"com.github.andrelcunha.go-redis-clone/pkg/store"
+	"com.github.andrelcunha.GoodiesDB/pkg/store"
 )
 
 func aofRename(parts []string, s *store.Store, dbIndex int) {

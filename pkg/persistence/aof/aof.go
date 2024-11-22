@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"com.github.andrelcunha.go-redis-clone/pkg/store"
+	"com.github.andrelcunha.GoodiesDB/pkg/store"
 )
 
 // AOFWriter writes commands to a file

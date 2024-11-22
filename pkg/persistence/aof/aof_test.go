@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"com.github.andrelcunha.go-redis-clone/internal/utils/slice"
-	"com.github.andrelcunha.go-redis-clone/pkg/store"
+	"com.github.andrelcunha.GoodiesDB/internal/utils/slice"
+	"com.github.andrelcunha.GoodiesDB/pkg/store"
 )
 
 func TestRebuildStoreFromAOF(t *testing.T) {
