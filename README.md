@@ -1,8 +1,8 @@
 # Goodies DB - A Redis implementation in Go
 
-GoodiesDb started as a Redis implementation written in Go, an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis's commands, e.g. `AUTH`, `SET`, `GET`, `DEL`, `EXISTS`, `SETNX`, `EXPIRE`, `INCR`, `DECR`, `TTL`, `SELECT`, `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LTRIM`, `RENAME`, `TYPE`, `KEYS`, `INFO`, `PING`, `ECHO`, `QUIT`, `FLUSHDB` and `FLUSHALL`.
+GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis's commands, including `AUTH`, `SET`, `GET`, `DEL`, `EXISTS`, `SETNX`, `EXPIRE`, `INCR`, `DECR`, `TTL`, `SELECT`, `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LTRIM`, `RENAME`, `TYPE`, `KEYS`, `INFO`, `PING`, `ECHO`, `QUIT`, `FLUSHDB` and `FLUSHALL`.
 
-**Disclaimer:** This is not a production-ready Redis clone, and it is not intended for use in production environments (yet).
+**Disclaimer:** This is not a production-ready Redis clone and it is not intended for use in production environments (yet).
 
 
 
@@ -15,15 +15,15 @@ GoodiesDb started as a Redis implementation written in Go, an educational projec
 - [Acknowledgements](#acknowledgements)
 
 ## Introduction
-Redis Clone aims to mimic the basic functionalities of Redis to provide a learning platform for developers interested in understanding distributed systems, data structures, and high-performance computing.
+GoodiesDB aims to mimic the basic functionalities of Redis to provide a learning platform for developers interested in understanding distributed systems, data structures, and high-performance computing.
 
 ## Features
 - In-memory key-value store
 - Data persistence using RDB and AOF
-- Support for lists, sets, and hash maps
-- Publish/Subscribe messaging
-- Basic transaction support
-- Lua scripting execution
+- Support for lists, sets, and hash maps (planned)
+- Publish/Subscribe messaging (planned)
+- Basic transaction support 
+- Lua scripting execution (planned)
 - Master-slave replication (planned)
 - Sharding (planned)
 
