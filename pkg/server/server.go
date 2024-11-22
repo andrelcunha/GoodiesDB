@@ -30,14 +30,6 @@ func NewServer(config *Config) *Server {
 	aofChan := make(chan string, 100)
 	s := store.NewStore(aofChan)
 
-	// if config.UseAOF {
-	// 	go aof.AOFWriter(aofChan, "appendonly.aof")
-	// 	s = store.NewStore(aofChan)
-	// 	fmt.Println("AOF persistence enabled")
-	// } else {
-	// 	s = store.NewStore(nil)
-	// }
-
 	return &Server{
 		store:                    s,
 		config:                   config,
