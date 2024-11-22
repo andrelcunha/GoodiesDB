@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"com.github.andrelcunha.go-redis-clone/pkg/persistence/aof"
+	"com.github.andrelcunha.go-redis-clone/pkg/persistence/rdb"
 	"com.github.andrelcunha.go-redis-clone/pkg/store"
 )
 
@@ -19,21 +21,56 @@ type Server struct {
 	mu                       sync.Mutex
 	authenticatedConnections map[net.Conn]bool
 	connectionDbs            map[net.Conn]int
+	shutdownChan             chan struct{}
 }
 
 // NewServer creates a new server
-func NewServer(store *store.Store, config *Config) *Server {
+func NewServer(config *Config) *Server {
+	//var s *store.Store
+	aofChan := make(chan string, 100)
+	s := store.NewStore(aofChan)
+
+	// if config.UseAOF {
+	// 	go aof.AOFWriter(aofChan, "appendonly.aof")
+	// 	s = store.NewStore(aofChan)
+	// 	fmt.Println("AOF persistence enabled")
+	// } else {
+	// 	s = store.NewStore(nil)
+	// }
+
 	return &Server{
-		store:                    store,
+		store:                    s,
 		config:                   config,
 		authenticatedConnections: make(map[net.Conn]bool),
 		connectionDbs:            make(map[net.Conn]int),
+		shutdownChan:             make(chan struct{}),
 	}
 }
 
 // Start starts the server
-func (s *Server) Start(addr string) error {
+func (s *Server) Start() error {
+	fmt.Println("Starting Redis Clone Server...")
+
+	if s.config.UseRDB || s.config.UseAOF {
+		fmt.Println("Found persistence enabled. Recovering data...")
+		s.recoverStore()
+	} else {
+		fmt.Println("No persistence enabled. Data will not be persisted.")
+	}
+
+	if s.config.UseRDB {
+		go s.startRDB()
+		fmt.Println("RDB persistence enabled")
+	}
+	if s.config.UseAOF {
+		go aof.AOFWriter(s.store.AOFChannel(), "appendonly.aof")
+		fmt.Println("AOF persistence enabled")
+	}
+
+	// set addr string (host and port) using config
+	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
 	ln, err := net.Listen("tcp", addr)
+	fmt.Printf("Redis Clone Server %s started on %s:%s\n", s.config.Version, s.config.Host, s.config.Port)
 	if err != nil {
 		return err
 	}
@@ -61,6 +98,19 @@ func (s *Server) handleConnection(conn net.Conn) {
 			return
 		}
 		s.handleCommand(conn, strings.TrimSpace(line))
+	}
+}
+
+// Shutdown gracefully shuts down the server
+func (s *Server) Shutdown() {
+	if s.config.UseAOF {
+		if s.store.AOFChannel() != nil {
+			close(s.store.AOFChannel())
+		}
+	}
+
+	if s.config.UseRDB {
+		rdb.SaveSnapshot(s.store, "dump.rdb")
 	}
 }
 
@@ -211,7 +261,11 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 			fmt.Fprintln(conn, "ERR invalid DB index")
 			return
 		}
-		s.selectDb(conn, dbIndex)
+		err = s.SelectDb(conn, dbIndex)
+		if err != nil {
+			fmt.Fprintln(conn, "ERR ", err.Error())
+			return
+		}
 		fmt.Fprintln(conn, "OK")
 
 	case "LPUSH":
@@ -337,45 +391,34 @@ func (s *Server) handleCommand(conn net.Conn, cmd string) {
 		if err != nil {
 			fmt.Fprintln(conn, "ERR ", err.Error())
 		}
-		fmt.Fprint(conn, keys)
+		fmt.Fprintln(conn, keys)
+
+	case "INFO":
+		fmt.Fprintln(conn, s.Info())
+
+	case "PING":
+		fmt.Fprintln(conn, s.Ping())
+
+	case "ECHO":
+		if len(parts) < 2 {
+			fmt.Fprintln(conn, "ERR wrong number of arguments for 'ECHO' command")
+			return
+		}
+		fmt.Fprintln(conn, s.Echo(strings.Join(parts[1:], " ")))
+
+	case "QUIT":
+		s.Quit(conn)
+
+	case "FLUSHDB":
+		s.store.FlushDb(dbIndex)
+		fmt.Fprintln(conn, "OK")
+
+	case "FLUSHALL":
+		s.store.FlushAll()
+		fmt.Fprintln(conn, "OK")
 
 	default:
 		fmt.Fprintln(conn, "ERR unknown command '"+parts[0]+"'")
-		fmt.Fprintln(conn, "Available commands: AUTH, SET, GET, DEL, EXISTS, SETNX, EXPIRE, INCR, DECR, TTL, SELECT, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LTRIM, RENAME, TYPE, KEYS")
+		fmt.Fprintln(conn, "Available commands: "+strings.Join(s.availableCommands(), " "))
 	}
-}
-
-func (s *Server) isAuthenticates(conn net.Conn) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.authenticatedConnections[conn]
-}
-
-func (s *Server) getCurrentDb(conn net.Conn) int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	db, ok := s.connectionDbs[conn]
-	if !ok {
-		db = 0
-		s.connectionDbs[conn] = db
-	}
-	return db
-}
-
-func (s *Server) selectDb(conn net.Conn, dbIndex int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.connectionDbs[conn] = dbIndex
-}
-
-const Version = "1.0.0"
-
-// Info returns server info
-func (s *Server) Info() string {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return fmt.Sprintf("Server info:\n\n"+
-		"Version: %s\n",
-		Version,
-	)
 }

@@ -1,59 +1,55 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"com.github.andrelcunha.go-redis-clone/pkg/persistence"
-	"com.github.andrelcunha.go-redis-clone/pkg/persistence/aof"
 	"com.github.andrelcunha.go-redis-clone/pkg/server"
-	"com.github.andrelcunha.go-redis-clone/pkg/store"
 	"github.com/joho/godotenv"
 )
 
+var version string = "v0.0.1"
+
 func main() {
+	// Create a channel to listen for termination signals
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Create a context that is canceled when a termination signal is received
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Goroutine to handle termination signals
+	go func() {
+		<-signalChan
+		cancel()
+	}()
+
 	// Load .env file
 	if err := godotenv.Load(); err != nil {
 		fmt.Println("Error loading .env file, using default values.")
 	}
 	// Set up configuration
 	config := server.NewConfig()
+	config.Version = version
 	config.LoadFromEnv()
 
-	fmt.Println("Starting Redis Clone Server...")
-
-	// Set up AOF
-	aofChan := make(chan string)
-
-	// Set up the store
-	s := store.NewStore(aofChan)
+	// Initialize Server
+	srv := server.NewServer(config)
 
 	// Start the server
-	srv := server.NewServer(s, config)
-
-	//Load snapshot on startup
-	if err := persistence.LoadSnapshot(s, "snapshot.gob"); err != nil {
-		fmt.Println("No snapshot found, starting with empty store.")
-	}
-
-	// Periodic snapshot saving
 	go func() {
-		for {
-			time.Sleep(1 * time.Minute)
-			if err := persistence.SaveSnapshot(s, "snapshot.gob"); err != nil {
-				fmt.Println("Error saving snapshot: ", err)
-			} else {
-				fmt.Println("Snapshot saved.")
-			}
+		if err := srv.Start(); err != nil {
+			fmt.Println("Error starting server:", err)
+			cancel()
 		}
 	}()
 
-	// Start the AOF writer
-	go aof.AOFWriter(aofChan, "appendonly.aof")
-
-	// Start the server
-	if err := srv.Start(":6379"); err != nil {
-		fmt.Println("Error starting server: ", err)
-		return
-	}
+	// Block until the context is canceled
+	<-ctx.Done()
+	fmt.Println("\nReceived termination signal. ")
+	fmt.Println("Shutting down Redis Clone Server...")
+	srv.Shutdown()
 }

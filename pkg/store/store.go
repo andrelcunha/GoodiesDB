@@ -53,6 +53,10 @@ func (s *Store) RUnlock() {
 	s.mu.RUnlock()
 }
 
+func (s *Store) AOFChannel() chan string {
+	return s.aofChan
+}
+
 // Set sets the value for a key
 func (s *Store) Set(dbIndex int, key, value string) {
 	s.mu.Lock()
@@ -441,4 +445,24 @@ func (s *Store) Keys(dbIndex int, pattern string) ([]string, error) {
 		}
 	}
 	return keys, nil
+}
+
+func (s *Store) FlushDb(dbIndex int) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.flushDb(dbIndex)
+	s.aofChan <- fmt.Sprintf("FLUSHDB %d", dbIndex)
+	return "OK"
+}
+
+func (s *Store) FlushAll() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for dbIndex := range s.Data {
+		s.flushDb(dbIndex)
+	}
+	s.aofChan <- "FLUSHALL"
+	return "OK"
 }

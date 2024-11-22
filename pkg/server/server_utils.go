@@ -1,0 +1,139 @@
+package server
+
+import (
+	"fmt"
+	"net"
+	"time"
+
+	"com.github.andrelcunha.go-redis-clone/pkg/persistence/aof"
+	"com.github.andrelcunha.go-redis-clone/pkg/persistence/rdb"
+)
+
+func (s *Server) isAuthenticates(conn net.Conn) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.authenticatedConnections[conn]
+}
+
+func (s *Server) getCurrentDb(conn net.Conn) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	db, ok := s.connectionDbs[conn]
+	if !ok {
+		db = 0
+		s.connectionDbs[conn] = db
+	}
+	return db
+}
+
+// availableCommands returns a list of available commands
+func (s *Server) availableCommands() []string {
+	return []string{
+		"AUTH",
+		"SET",
+		"GET",
+		"DEL",
+		"EXISTS",
+		"SETNX",
+		"EXPIRE",
+		"INCR",
+		"DECR",
+		"TTL",
+		"SELECT",
+		"LPUSH",
+		"RPUSH",
+		"LPOP",
+		"RPOP",
+		"LRANGE",
+		"LTRIM",
+		"RENAME",
+		"TYPE",
+		"KEYS",
+		"INFO",
+		"PING",
+		"ECHO",
+		"QUIT",
+		"FLUSHDB",
+		"FLUSHALL",
+	}
+}
+
+// Info returns server info
+func (s *Server) Info() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return fmt.Sprintf("Server info:\n\n"+
+		"Version: %s\n",
+		s.config.Version,
+	)
+}
+
+// Ping returns pong
+func (s *Server) Ping() string {
+	return "PONG"
+}
+
+// Echo returns the message
+func (s *Server) Echo(message string) string {
+	return message
+}
+
+// Quit closes the connection
+func (s *Server) Quit(conn net.Conn) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	fmt.Fprintln(conn, "OK")
+	delete(s.authenticatedConnections, conn)
+	conn.Close()
+}
+
+// SelectDb selects the database
+func (s *Server) SelectDb(conn net.Conn, dbIndex int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if dbIndex < 0 || dbIndex >= len(s.store.Data) {
+		return fmt.Errorf("invalid DB index")
+	}
+	s.connectionDbs[conn] = dbIndex
+	return nil
+}
+
+func (s *Server) startRDB() {
+	for {
+		select {
+		case <-time.After(1 * time.Minute):
+			if err := rdb.SaveSnapshot(s.store, "dump.rdb"); err != nil {
+				fmt.Println("Error saving snapshot:", err)
+			} else {
+				fmt.Println("Snapshot saved successfully")
+			}
+
+		case <-s.shutdownChan:
+			return
+		}
+	}
+}
+
+func (s *Server) recoverStore() {
+	flagOk := false
+	if s.config.UseRDB {
+		if err := rdb.LoadSnapshot(s.store, "dump.rdb"); err != nil {
+			fmt.Println("No snapshot found.")
+		} else {
+			flagOk = true
+		}
+	}
+
+	if s.config.UseAOF && !flagOk {
+		if err := aof.RebuildStoreFromAOF(s.store, "appendonly.aof"); err != nil {
+			fmt.Println("Error loading from AOF:", err)
+
+		} else {
+			flagOk = true
+		}
+	}
+	if !flagOk {
+		fmt.Println("None of the recovery files are healthy. Starting with an empty store.")
+	}
+}

@@ -18,3 +18,9 @@ func (s *Store) delKey(dbIndex int, key string) {
 	delete(s.Data[dbIndex], key)
 	delete(s.Expires[dbIndex], key)
 }
+
+// flushDb flushes the database
+func (s *Store) flushDb(dbIndex int) {
+	s.Data[dbIndex] = make(map[string]interface{})
+	s.Expires[dbIndex] = make(map[string]time.Time)
+}
