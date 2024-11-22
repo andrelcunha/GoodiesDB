@@ -40,5 +40,7 @@ go.work.sum
 
 *.aof
 *.gob
+dump.rdb
+dump.rdb.*
 
 bin/
