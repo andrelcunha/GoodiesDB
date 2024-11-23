@@ -1,4 +1,6 @@
 [![Go](https://github.com/andrelcunha/GoodiesDB/actions/workflows/go.yml/badge.svg)](https://github.com/andrelcunha/GoodiesDB/actions/workflows/go.yml)
+[![Docker Image CI](https://github.com/andrelcunha/GoodiesDB/actions/workflows/docker-image.yml/badge.svg)](https://github.com/andrelcunha/GoodiesDB/actions/workflows/docker-image.yml)
+
 # Goodies DB - A Redis implementation in Go
 
 GoodiesDb started as a Redis implementation written in Go, serving as an educational project to learn and understand the inner workings of Redis, a popular in-memory data structure store. The current state of the project implements a subset of Redis's commands, including `AUTH`, `SET`, `GET`, `DEL`, `EXISTS`, `SETNX`, `EXPIRE`, `INCR`, `DECR`, `TTL`, `SELECT`, `LPUSH`, `RPUSH`, `LPOP`, `RPOP`, `LRANGE`, `LTRIM`, `RENAME`, `TYPE`, `KEYS`, `INFO`, `PING`, `ECHO`, `QUIT`, `FLUSHDB` and `FLUSHALL`.
