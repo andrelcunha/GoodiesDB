@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,11 +24,18 @@ type Server struct {
 	authenticatedConnections map[net.Conn]bool
 	connectionDbs            map[net.Conn]int
 	shutdownChan             chan struct{}
+	dataDir                  string
 }
 
 // NewServer creates a new server
 func NewServer(config *Config) *Server {
-	//var s *store.Store
+	// Create the data directory if it doesn't exist
+	dataDir := config.DataDir
+	if err := os.MkdirAll(dataDir, os.ModePerm); err != nil {
+		fmt.Printf("Error creating data directory: %v\n", err)
+		os.Exit(1)
+	}
+
 	aofChan := make(chan string, 100)
 	s := store.NewStore(aofChan)
 
@@ -36,6 +45,7 @@ func NewServer(config *Config) *Server {
 		authenticatedConnections: make(map[net.Conn]bool),
 		connectionDbs:            make(map[net.Conn]int),
 		shutdownChan:             make(chan struct{}),
+		dataDir:                  config.DataDir,
 	}
 }
 
@@ -56,7 +66,8 @@ func (s *Server) Start() error {
 		fmt.Println("RDB persistence enabled")
 	}
 	if s.config.UseAOF {
-		go aof.AOFWriter(s.store.AOFChannel(), "appendonly.aof")
+		aofFilepath := filepath.Join(s.dataDir, "appendonly.aof")
+		go aof.AOFWriter(s.store.AOFChannel(), aofFilepath)
 		fmt.Println("AOF persistence enabled")
 	}
 

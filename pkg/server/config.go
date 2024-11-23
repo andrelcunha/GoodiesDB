@@ -9,6 +9,7 @@ type Config struct {
 	UseRDB   bool
 	UseAOF   bool
 	Version  string
+	DataDir  string
 }
 
 func NewConfig() *Config {
@@ -17,6 +18,7 @@ func NewConfig() *Config {
 		Password: "guest",
 		UseRDB:   true,
 		UseAOF:   true,
+		DataDir:  "data",
 	}
 }
 
@@ -36,5 +38,8 @@ func (c *Config) LoadFromEnv() {
 	}
 	if useAOF := os.Getenv("USE_AOF"); useAOF != "" {
 		c.UseAOF = useAOF == "true"
+	}
+	if dataDir := os.Getenv("DATA_DIR"); dataDir != "" {
+		c.DataDir = dataDir
 	}
 }

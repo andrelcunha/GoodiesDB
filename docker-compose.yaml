@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  goodiesdb-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: goodiesdb-server
+    ports:
+      - "6379:6379"
+    environment:
+      - GOODIESDB_PASSWORD=mypassword
+    volumes:
+      - goodiesdb-data:/app/data
+
+volumes:
+  goodiesdb-data:

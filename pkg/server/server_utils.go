@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net"
+	"path/filepath"
 	"time"
 
 	"com.github.andrelcunha.GoodiesDB/pkg/persistence/aof"
@@ -100,10 +101,11 @@ func (s *Server) SelectDb(conn net.Conn, dbIndex int) error {
 }
 
 func (s *Server) startRDB() {
+	rdbFilepath := filepath.Join(s.dataDir, "dump.rdb")
 	for {
 		select {
 		case <-time.After(1 * time.Minute):
-			if err := rdb.SaveSnapshot(s.store, "dump.rdb"); err != nil {
+			if err := rdb.SaveSnapshot(s.store, rdbFilepath); err != nil {
 				fmt.Println("Error saving snapshot:", err)
 			} else {
 				fmt.Println("Snapshot saved successfully")
@@ -116,9 +118,11 @@ func (s *Server) startRDB() {
 }
 
 func (s *Server) recoverStore() {
+	rdbFilepath := filepath.Join(s.dataDir, "dump.rdb")
+	aofFilepath := filepath.Join(s.dataDir, "appendonly.aof")
 	flagOk := false
 	if s.config.UseRDB {
-		if err := rdb.LoadSnapshot(s.store, "dump.rdb"); err != nil {
+		if err := rdb.LoadSnapshot(s.store, rdbFilepath); err != nil {
 			fmt.Println("No snapshot found.")
 		} else {
 			flagOk = true
@@ -126,7 +130,7 @@ func (s *Server) recoverStore() {
 	}
 
 	if s.config.UseAOF && !flagOk {
-		if err := aof.RebuildStoreFromAOF(s.store, "appendonly.aof"); err != nil {
+		if err := aof.RebuildStoreFromAOF(s.store, aofFilepath); err != nil {
 			fmt.Println("Error loading from AOF:", err)
 
 		} else {
